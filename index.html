@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merger & Creator - Privacy-First PDF Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: 60px; /* Ensure space for notifications */
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .privacy-info {
+            margin-top: 20px;
+        }
+
+        .privacy-badge {
+            display: inline-flex;
+            flex-direction: column; /* Stack main text and explanation */
+            align-items: center;
+            background: rgba(34, 197, 94, 0.2);
+            padding: 10px 18px;
+            border-radius: 15px;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .privacy-badge-main {
+            color: white;
+            font-weight: bold;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+        }
+
+        .privacy-badge-main::before {
+            content: "🔒";
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+
+        .privacy-badge-explanation {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.8em;
+            margin-top: 5px;
+            max-width: 280px; /* Limit width for better readability */
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #f8faff, #f1f5ff);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #4f46e5;
+            background: linear-gradient(45deg, #eef2ff, #e0e7ff);
+            transform: scale(1.02);
+        }
+
+        .drop-zone::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .drop-zone-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .drop-zone h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #4f46e5;
+        }
+
+        .drop-zone p {
+            color: #6b7280;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-list {
+            margin-top: 30px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: #f1f5f9;
+            transform: translateX(5px);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            overflow: hidden; /* Prevent long file names from breaking layout */
+        }
+
+        .file-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+            color: #ef4444; /* PDF icon color */
+        }
+
+        .file-details {
+            overflow: hidden; /* For text-overflow */
+            white-space: nowrap;
+        }
+        .file-details h4 {
+            color: #374151;
+            margin-bottom: 5px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        .file-details p {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 8px 12px; /* Adjusted padding */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex; /* For icon alignment */
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-icon {
+            margin-right: 5px;
+        }
+
+        .btn-remove {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .btn-remove:hover {
+            background: #fecaca;
+        }
+
+        .btn-up, .btn-down {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
+        .btn-up:hover, .btn-down:hover {
+            background: #c7d2fe;
+        }
+
+        .btn-edit {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .btn-edit:hover {
+            background: #fde68a;
+        }
+
+        .action-section { /* Renamed from merge-section for clarity */
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .action-btn { /* Renamed from merge-btn */
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease, background 0.3s ease; /* Added background transition */
+            box-shadow: 0 10px 25px rgba(5, 150, 105, 0.3);
+            position: relative;
+            overflow: hidden;
+            min-width: 220px; /* Ensure button doesn't resize too much */
+        }
+
+        .action-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(5, 150, 105, 0.4);
+        }
+
+        .action-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .feature h3 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .feature p {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .upload-section {
+                padding: 20px;
+            }
+            .drop-zone {
+                padding: 40px 15px;
+            }
+            .header h1 {
+                font-size: 2em;
+            }
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .file-info {
+                width: 100%; /* Ensure file info takes full width */
+            }
+            .file-actions {
+                align-self: stretch;
+                justify-content: space-around; /* Better spacing on mobile */
+            }
+            .btn {
+                padding: 10px; /* Larger touch targets */
+            }
+            .action-btn {
+                font-size: 1.1em;
+                padding: 15px 30px;
+            }
+        }
+
+        /* PDF Editor & Confirmation Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7); /* Darker backdrop */
+            backdrop-filter: blur(8px); /* Stronger blur */
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0; /* For fade-in animation */
+            visibility: hidden; /* For fade-in animation */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 1200px; /* For PDF Editor */
+            max-height: 90vh; /* Max height relative to viewport */
+            overflow: hidden; /* Let child elements handle scrolling */
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.95); /* For pop-in animation */
+            transition: transform 0.3s ease;
+        }
+        .modal.active .modal-content {
+             transform: scale(1);
+        }
+
+        .modal-content.confirm-dialog {
+            max-width: 450px; /* Smaller width for confirmation dialogs */
+            max-height: auto; /* Auto height for confirmation */
+        }
+
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.8em; /* Larger close icon */
+            cursor: pointer;
+            padding: 0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 20px 30px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap; /* Allow tools to wrap on smaller screens */
+            flex-shrink: 0;
+        }
+
+        .tool-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px; /* Space between icon and text */
+        }
+
+        .tool-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .tool-btn.danger {
+            background: #ef4444;
+        }
+
+        .tool-btn.danger:hover {
+            background: #dc2626;
+        }
+
+        .pdf-viewer {
+            padding: 20px; /* Reduced padding */
+            text-align: center;
+            overflow-y: auto; /* Scroll for PDF content */
+            flex-grow: 1; /* Allow viewer to take available space */
+            background: #edf2f7; /* Light background for canvas area */
+        }
+
+        .page-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px; /* Reduced gap */
+            margin-bottom: 15px;
+        }
+
+        .page-controls button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .page-controls button:hover {
+            background: #5a67d8;
+        }
+
+        .page-controls button:disabled {
+            background: #cbd5e1; /* Lighter disabled color */
+            cursor: not-allowed;
+        }
+        #pageInfo {
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        #pdfCanvas {
+            border: 1px solid #e2e8f0; /* Lighter border */
+            border-radius: 8px;
+            max-width: 100%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            background-color: white; /* Ensure canvas background is white */
+        }
+
+        .crop-controls {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .crop-controls h4 {
+            margin-bottom: 15px;
+            color: #374151;
+            font-size: 1.1em;
+        }
+
+        .crop-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Smaller min width */
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .crop-inputs label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9em;
+        }
+
+        .crop-inputs input {
+            padding: 10px 12px; /* Increased padding for easier interaction */
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .editor-actions, .confirm-actions { /* Shared style for action buttons container */
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            padding: 20px 30px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .confirm-actions {
+            justify-content: center; /* Center buttons in confirmation modal */
+        }
+
+        .action-btn-modal, .confirm-btn { /* Common style for modal buttons */
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+        }
+        .save-btn:hover {
+            background: linear-gradient(135deg, #047857, #065f46);
+            transform: translateY(-1px);
+        }
+
+        .cancel-btn {
+            background: #6b7280;
+            color: white;
+        }
+        .cancel-btn:hover {
+            background: #4b5563;
+        }
+        
+        .apply-btn { /* For crop apply */
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .apply-btn:hover {
+            background: #047857;
+        }
+
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            bottom: 20px; /* Changed from top to bottom */
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Adjust for centering */
+            padding: 15px 25px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            z-index: 2000; /* Ensure it's above modals */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            min-width: 300px;
+            text-align: center;
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0); /* Slide in from bottom */
+        }
+        .notification.success {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+        .notification.error {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+        }
+        .notification.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 PDF Tool</h1>
+            <p>Merge multiple PDF files or process a single PDF. All operations are done completely in your browser for privacy.</p>
+            <div class="privacy-info">
+                <div class="privacy-badge">
+                    <span class="privacy-badge-main">100% Client-Side Processing</span>
+                    <span class="privacy-badge-explanation">Your data is private and not being uploaded to any cloud.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-content">
+                    <span class="upload-icon">📄</span>
+                    <h3>Drop PDF files here</h3>
+                    <p>or click to browse and select files</p>
+                    <button class="upload-btn" id="browseBtn">
+                        Choose PDF Files
+                    </button>
+                </div>
+            </div>
+            <input type="file" id="fileInput" class="file-input" multiple accept=".pdf">
+
+            <div class="file-list" id="fileList">
+                </div>
+
+            <div class="action-section">
+                <button class="action-btn" id="processActionBtn" disabled>
+                    🚀 Merge PDFs
+                </button>
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <span id="loadingText">Processing your PDFs...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">🔒</span>
+                <h3>Privacy First</h3>
+                <p>All processing happens in your browser. Your files never leave your device.</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">⚡</span>
+                <h3>Lightning Fast</h3>
+                <p>No server delays. Process your PDFs instantly with JavaScript performance.</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">✏️</span>
+                <h3>Edit &amp; Organize</h3>
+                <p>Reorder, rotate, crop, and more before finalizing your document.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="pdfEditorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 PDF Editor</h2>
+                <button class="close-btn" id="closeEditorBtn">✕</button>
+            </div>
+            <div class="editor-toolbar">
+                <button class="tool-btn" id="rotateLeftBtn">↶ Rotate Left</button>
+                <button class="tool-btn" id="rotateRightBtn">↷ Rotate Right</button>
+                <button class="tool-btn" id="compressBtn">🗜️ Compress</button>
+                <button class="tool-btn" id="cropBtn">✂️ Crop Pages</button>
+                <button class="tool-btn" id="removeCommentsBtn">💬 Remove Comments</button>
+                <button class="tool-btn danger" id="deletePageBtn">🗑️ Delete Page</button>
+            </div>
+            <div class="pdf-viewer">
+                <div class="page-controls">
+                    <button id="prevPageBtn">← Previous</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPageBtn">Next →</button>
+                </div>
+                <canvas id="pdfCanvas"></canvas>
+                <div class="crop-controls" id="cropControlsContainer" style="display: none;">
+                    <h4>Crop Settings (pixels from edge):</h4>
+                    <div class="crop-inputs">
+                        <label>Top: <input type="number" id="cropTop" value="0" min="0"></label>
+                        <label>Bottom: <input type="number" id="cropBottom" value="0" min="0"></label>
+                        <label>Left: <input type="number" id="cropLeft" value="0" min="0"></label>
+                        <label>Right: <input type="number" id="cropRight" value="0" min="0"></label>
+                    </div>
+                    <button class="apply-btn" id="applyCropBtn">Apply Crop</button>
+                    <button class="cancel-btn" id="cancelCropBtn">Cancel</button>
+                </div>
+            </div>
+            <div class="editor-actions">
+                <button class="action-btn-modal save-btn" id="savePdfChangesBtn">💾 Save Changes</button>
+                <button class="action-btn-modal cancel-btn" id="cancelEditorBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="confirmationModal">
+        <div class="modal-content confirm-dialog">
+            <div class="modal-header">
+                <h2 id="confirmationTitle">Confirm Action</h2>
+                 <button class="close-btn" id="closeConfirmModalBtn">✕</button>
+            </div>
+            <div style="padding: 30px 20px; text-align: center;">
+                <p id="confirmationMessage" style="font-size: 1.1em; line-height: 1.6; color: #333;">Are you sure?</p>
+            </div>
+            <div class="confirm-actions">
+                <button class="action-btn-modal save-btn" id="confirmYesBtn">Yes</button>
+                <button class="action-btn-modal cancel-btn" id="confirmNoBtn">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notificationArea"></div>
+
+
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const browseBtn = document.getElementById('browseBtn');
+        const fileListContainer = document.getElementById('fileList');
+        const processActionBtn = document.getElementById('processActionBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingText = document.getElementById('loadingText');
+
+        // PDF Editor Modal Elements
+        const pdfEditorModal = document.getElementById('pdfEditorModal');
+        const closeEditorBtn = document.getElementById('closeEditorBtn');
+        const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+        const rotateRightBtn = document.getElementById('rotateRightBtn');
+        const compressBtn = document.getElementById('compressBtn');
+        const cropBtn = document.getElementById('cropBtn');
+        const removeCommentsBtn = document.getElementById('removeCommentsBtn');
+        const deletePageBtn = document.getElementById('deletePageBtn');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const pageInfoDisplay = document.getElementById('pageInfo');
+        const pdfCanvas = document.getElementById('pdfCanvas');
+        const cropControlsContainer = document.getElementById('cropControlsContainer');
+        const cropTopInput = document.getElementById('cropTop');
+        const cropBottomInput = document.getElementById('cropBottom');
+        const cropLeftInput = document.getElementById('cropLeft');
+        const cropRightInput = document.getElementById('cropRight');
+        const applyCropBtn = document.getElementById('applyCropBtn');
+        const cancelCropBtn = document.getElementById('cancelCropBtn');
+        const savePdfChangesBtn = document.getElementById('savePdfChangesBtn');
+        const cancelEditorBtn = document.getElementById('cancelEditorBtn');
+        
+        // Confirmation Modal Elements
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmationTitle = document.getElementById('confirmationTitle');
+        const confirmationMessage = document.getElementById('confirmationMessage');
+        const confirmYesBtn = document.getElementById('confirmYesBtn');
+        const confirmNoBtn = document.getElementById('confirmNoBtn');
+        const closeConfirmModalBtn = document.getElementById('closeConfirmModalBtn');
+        let confirmCallback = null;
+
+
+        // State variables
+        let selectedFiles = []; // Stores original File objects or modified ArrayBuffers/Blobs
+        let currentEditingFileIndex = -1; // Index in selectedFiles
+        let currentPdfDocInstance = null; // pdf.js document instance
+        let currentPageNum = 1;
+        let totalPagesInCurrentDoc = 1;
+        let pdfRenderTask = null; // pdf.js render task
+
+        // Setup PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Event Listeners
+        browseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        dropZone.addEventListener('dragover', handleDragOver);
+        dropZone.addEventListener('dragleave', handleDragLeave);
+        dropZone.addEventListener('drop', handleFileDrop);
+        dropZone.addEventListener('click', () => fileInput.click()); 
+        processActionBtn.addEventListener('click', processFiles);
+
+        // Editor Listeners
+        closeEditorBtn.addEventListener('click', closePdfEditor);
+        cancelEditorBtn.addEventListener('click', closePdfEditor);
+        savePdfChangesBtn.addEventListener('click', savePdfChanges);
+        rotateLeftBtn.addEventListener('click', () => rotateCurrentPdfPage(-90));
+        rotateRightBtn.addEventListener('click', () => rotateCurrentPdfPage(90));
+        compressBtn.addEventListener('click', compressCurrentPdf);
+        cropBtn.addEventListener('click', showCropControls);
+        removeCommentsBtn.addEventListener('click', removeCommentsFromCurrentPdf);
+        deletePageBtn.addEventListener('click', () => {
+             if (totalPagesInCurrentDoc <= 1) {
+                showCustomNotification('Cannot delete the only page.', 'error');
+                return;
+            }
+            showConfirmation('Delete Page', `Are you sure you want to delete page ${currentPageNum}? This action cannot be undone.`, deleteCurrentPdfPage);
+        });
+        prevPageBtn.addEventListener('click', showPreviousPage);
+        nextPageBtn.addEventListener('click', showNextPage);
+        applyCropBtn.addEventListener('click', applyCropToCurrentPdf);
+        cancelCropBtn.addEventListener('click', hideCropControls);
+
+        // Confirmation Modal Listeners
+        confirmYesBtn.addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            hideConfirmation();
+        });
+        confirmNoBtn.addEventListener('click', hideConfirmation);
+        closeConfirmModalBtn.addEventListener('click', hideConfirmation);
+
+
+        // File Handling Functions
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files).filter(file => file.type === 'application/pdf');
+            addFilesToList(files);
+            // CRITICAL: Reset input value to allow selecting the same file again.
+            // This addresses the common scenario where a file input might seem to ignore
+            // re-selection of the exact same file because its 'value' hasn't changed.
+            event.target.value = ''; 
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            dropZone.classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            dropZone.classList.remove('drag-over');
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = Array.from(event.dataTransfer.files).filter(file => file.type === 'application/pdf');
+            if (files.length > 0) {
+                addFilesToList(files);
+            }
+        }
+
+        function addFilesToList(newFiles) {
+            newFiles.forEach(file => {
+                if (!selectedFiles.some(existingFile => existingFile.name === file.name && existingFile.size === file.size)) {
+                    selectedFiles.push(file); 
+                }
+            });
+            renderFileList();
+            updateProcessActionButton();
+        }
+
+        function renderFileList() {
+            fileListContainer.innerHTML = ''; 
+            selectedFiles.forEach((fileData, index) => { 
+                const file = (fileData instanceof File) ? fileData : new File([fileData.arrayBuffer || fileData.blob], fileData.name, {type: 'application/pdf'});
+
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.dataset.index = index;
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-number">${index + 1}</div>
+                        <span class="file-icon">📄</span>
+                        <div class="file-details">
+                            <h4>${escapeHtml(file.name)}</h4>
+                            <p>${formatFileSize(file.size)}</p>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn btn-edit" title="Edit PDF"><span class="btn-icon">✏️</span> Edit</button>
+                        <button class="btn btn-up" title="Move Up" ${index === 0 ? 'disabled' : ''}><span class="btn-icon">↑</span></button>
+                        <button class="btn btn-down" title="Move Down" ${index === selectedFiles.length - 1 ? 'disabled' : ''}><span class="btn-icon">↓</span></button>
+                        <button class="btn btn-remove" title="Remove PDF"><span class="btn-icon">✕</span></button>
+                    </div>
+                `;
+                fileItem.querySelector('.btn-edit').addEventListener('click', () => openPdfEditor(index));
+                fileItem.querySelector('.btn-up').addEventListener('click', () => moveFile(index, -1));
+                fileItem.querySelector('.btn-down').addEventListener('click', () => moveFile(index, 1));
+                fileItem.querySelector('.btn-remove').addEventListener('click', () => removeFile(index));
+                
+                fileListContainer.appendChild(fileItem);
+            });
+        }
+        
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+            updateProcessActionButton();
+        }
+
+        function moveFile(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex >= 0 && newIndex < selectedFiles.length) {
+                [selectedFiles[index], selectedFiles[newIndex]] = [selectedFiles[newIndex], selectedFiles[index]];
+                renderFileList();
+            }
+        }
+
+        function updateProcessActionButton() {
+            const numFiles = selectedFiles.length;
+            if (numFiles === 0) {
+                processActionBtn.disabled = true;
+                processActionBtn.innerHTML = '🚀 Merge PDFs'; 
+            } else if (numFiles === 1) {
+                processActionBtn.disabled = false;
+                processActionBtn.innerHTML = '📄 Create PDF';
+            } else { 
+                processActionBtn.disabled = false;
+                processActionBtn.innerHTML = '🚀 Merge PDFs';
+            }
+        }
+
+        async function processFiles() {
+            if (selectedFiles.length === 0) return;
+
+            processActionBtn.style.display = 'none';
+            loadingIndicator.style.display = 'flex';
+            
+            try {
+                let resultFileName = 'processed-document.pdf';
+                let finalPdfBytes;
+
+                if (selectedFiles.length === 1) {
+                    loadingText.textContent = 'Processing your PDF...';
+                    const fileData = selectedFiles[0];
+                    const arrayBuffer = (fileData instanceof File) ? await fileData.arrayBuffer() : fileData.arrayBuffer || await fileData.blob.arrayBuffer();
+                    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                    finalPdfBytes = await pdfDoc.save();
+                    resultFileName = selectedFiles[0].name.replace(/\.pdf$/i, '') + '-processed.pdf';
+                    showCustomNotification('✅ PDF processed successfully!', 'success');
+                } else { 
+                    loadingText.textContent = 'Merging your PDFs...';
+                    const mergedPdf = await PDFLib.PDFDocument.create();
+                    for (const fileData of selectedFiles) {
+                         const arrayBuffer = (fileData instanceof File) ? await fileData.arrayBuffer() : fileData.arrayBuffer || await fileData.blob.arrayBuffer();
+                        const pdfToMerge = await PDFLib.PDFDocument.load(arrayBuffer);
+                        const copiedPages = await mergedPdf.copyPages(pdfToMerge, pdfToMerge.getPageIndices());
+                        copiedPages.forEach(page => mergedPdf.addPage(page));
+                    }
+                    finalPdfBytes = await mergedPdf.save();
+                    resultFileName = 'merged-document.pdf';
+                    showCustomNotification('✅ PDFs merged successfully!', 'success');
+                }
+
+                const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = resultFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error('Error processing PDFs:', error);
+                showCustomNotification(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                processActionBtn.style.display = 'inline-block';
+                loadingIndicator.style.display = 'none';
+                loadingText.textContent = 'Processing your PDFs...'; 
+            }
+        }
+
+        async function openPdfEditor(index) {
+            currentEditingFileIndex = index;
+            const fileData = selectedFiles[index]; 
+            
+            try {
+                const arrayBuffer = (fileData instanceof File) ? await fileData.arrayBuffer() : fileData.arrayBuffer || await fileData.blob.arrayBuffer();
+                currentPdfDocInstance = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                totalPagesInCurrentDoc = currentPdfDocInstance.numPages;
+                currentPageNum = 1;
+                
+                pdfEditorModal.classList.add('active');
+                await renderCurrentPageInEditor();
+                updateEditorPageInfo();
+                hideCropControls(); 
+            } catch (error) {
+                console.error('Error opening PDF for editing:', error);
+                showCustomNotification('❌ Error opening PDF for editing.', 'error');
+                closePdfEditor();
+            }
+        }
+
+        function closePdfEditor() {
+            pdfEditorModal.classList.remove('active');
+            if (pdfRenderTask) {
+                pdfRenderTask.cancel();
+                pdfRenderTask = null;
+            }
+            currentPdfDocInstance = null;
+        }
+
+        async function renderCurrentPageInEditor() {
+            if (!currentPdfDocInstance) return;
+            
+            try {
+                prevPageBtn.disabled = currentPageNum <= 1;
+                nextPageBtn.disabled = currentPageNum >= totalPagesInCurrentDoc;
+
+                const page = await currentPdfDocInstance.getPage(currentPageNum);
+                const viewport = page.getViewport({ scale: 1.5 }); 
+                
+                pdfCanvas.height = viewport.height;
+                pdfCanvas.width = viewport.width;
+                const context = pdfCanvas.getContext('2d');
+                
+                const renderContext = { canvasContext: context, viewport: viewport };
+                
+                if (pdfRenderTask) pdfRenderTask.cancel(); 
+                pdfRenderTask = page.render(renderContext);
+                await pdfRenderTask.promise;
+                pdfRenderTask = null;
+            } catch (error) {
+                if (error.name !== 'RenderingCancelledException') {
+                    console.error('Error rendering page:', error);
+                    showCustomNotification('❌ Error rendering page.', 'error');
+                }
+            }
+        }
+
+        function updateEditorPageInfo() {
+            pageInfoDisplay.textContent = `Page ${currentPageNum} of ${totalPagesInCurrentDoc}`;
+        }
+
+        async function showPreviousPage() {
+            if (currentPageNum > 1) {
+                currentPageNum--;
+                await renderCurrentPageInEditor();
+                updateEditorPageInfo();
+            }
+        }
+
+        async function showNextPage() {
+            if (currentPageNum < totalPagesInCurrentDoc) {
+                currentPageNum++;
+                await renderCurrentPageInEditor();
+                updateEditorPageInfo();
+            }
+        }
+
+        async function getEditablePdfDoc() {
+            const fileData = selectedFiles[currentEditingFileIndex];
+            const arrayBuffer = (fileData instanceof File) ? await fileData.arrayBuffer() : fileData.arrayBuffer || await fileData.blob.arrayBuffer();
+            return PDFLib.PDFDocument.load(arrayBuffer);
+        }
+
+        async function updateSelectedFile(pdfDoc) {
+            const pdfBytes = await pdfDoc.save();
+            const originalFile = selectedFiles[currentEditingFileIndex];
+            selectedFiles[currentEditingFileIndex] = {
+                name: (originalFile instanceof File) ? originalFile.name : originalFile.name,
+                size: pdfBytes.byteLength,
+                arrayBuffer: pdfBytes, 
+            };
+            currentPdfDocInstance = await pdfjsLib.getDocument({data: pdfBytes.slice(0)}).promise; 
+            totalPagesInCurrentDoc = currentPdfDocInstance.numPages;
+            if (currentPageNum > totalPagesInCurrentDoc && totalPagesInCurrentDoc > 0) {
+                currentPageNum = totalPagesInCurrentDoc;
+            } else if (totalPagesInCurrentDoc === 0) { 
+                currentPageNum = 0; 
+                const ctx = pdfCanvas.getContext('2d');
+                ctx.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+                pageInfoDisplay.textContent = "No pages";
+                showCustomNotification('All pages deleted. Save changes to apply.', 'info');
+                return; 
+            }
+            await renderCurrentPageInEditor();
+            updateEditorPageInfo();
+        }
+        
+        async function rotateCurrentPdfPage(degrees) {
+            if (currentEditingFileIndex === -1 || !currentPdfDocInstance) return;
+            try {
+                const pdfDoc = await getEditablePdfDoc();
+                const page = pdfDoc.getPage(currentPageNum - 1); 
+                const currentRotation = page.getRotation().angle;
+                page.setRotation(PDFLib.degrees(currentRotation + degrees));
+                await updateSelectedFile(pdfDoc);
+                showCustomNotification(`✅ Page ${currentPageNum} rotated.`, 'success');
+            } catch (e) {
+                showCustomNotification('❌ Error rotating page.', 'error'); console.error(e);
+            }
+        }
+
+        async function compressCurrentPdf() {
+             if (currentEditingFileIndex === -1) return;
+            try {
+                const pdfDoc = await getEditablePdfDoc();
+                await updateSelectedFile(pdfDoc); 
+                showCustomNotification('✅ PDF re-processed (basic optimization).', 'success');
+            } catch (e)
+{
+                showCustomNotification('❌ Error compressing PDF.', 'error'); console.error(e);
+            }
+        }
+
+        function showCropControls() {
+            cropControlsContainer.style.display = 'block';
+            cropTopInput.value = 0; cropBottomInput.value = 0; cropLeftInput.value = 0; cropRightInput.value = 0;
+        }
+        function hideCropControls() {
+            cropControlsContainer.style.display = 'none';
+        }
+
+        async function applyCropToCurrentPdf() {
+            if (currentEditingFileIndex === -1 || !currentPdfDocInstance) return;
+            const top = parseInt(cropTopInput.value) || 0;
+            const bottom = parseInt(cropBottomInput.value) || 0;
+            const left = parseInt(cropLeftInput.value) || 0;
+            const right = parseInt(cropRightInput.value) || 0;
+
+            try {
+                const pdfDoc = await getEditablePdfDoc();
+                const page = pdfDoc.getPage(currentPageNum - 1);
+                const { width, height } = page.getSize();
+
+                if (left + right >= width || top + bottom >= height) {
+                    showCustomNotification('❌ Invalid crop dimensions.', 'error');
+                    return;
+                }
+                page.setCropBox(left, bottom, width - left - right, height - top - bottom);
+                await updateSelectedFile(pdfDoc);
+                showCustomNotification(`✅ Page ${currentPageNum} cropped.`, 'success');
+                hideCropControls();
+            } catch (e) {
+                showCustomNotification('❌ Error cropping page.', 'error'); console.error(e);
+            }
+        }
+        
+        async function removeCommentsFromCurrentPdf() {
+            if (currentEditingFileIndex === -1) return;
+            try {
+                const pdfDoc = await getEditablePdfDoc();
+                let commentsRemoved = false;
+                pdfDoc.getPages().forEach(page => {
+                    const annotsRef = page.node.get(PDFLib.PDFName.of('Annots'));
+                    if (annotsRef) {
+                        page.node.delete(PDFLib.PDFName.of('Annots'));
+                        commentsRemoved = true;
+                    }
+                });
+                if (commentsRemoved) {
+                    await updateSelectedFile(pdfDoc);
+                    showCustomNotification('✅ Annotations (comments) removed.', 'success');
+                } else {
+                    showCustomNotification('ℹ️ No annotations found to remove.', 'info');
+                }
+            } catch (e) {
+                showCustomNotification('❌ Error removing comments.', 'error'); console.error(e);
+            }
+        }
+
+        async function deleteCurrentPdfPage() {
+            if (currentEditingFileIndex === -1 || !currentPdfDocInstance || totalPagesInCurrentDoc <= 0) return;
+            try {
+                const pdfDoc = await getEditablePdfDoc();
+                pdfDoc.removePage(currentPageNum - 1); 
+                await updateSelectedFile(pdfDoc); 
+                showCustomNotification(`✅ Page deleted.`, 'success');
+                 if (totalPagesInCurrentDoc === 0) { 
+                    closePdfEditor(); 
+                }
+            } catch (e) {
+                showCustomNotification('❌ Error deleting page.', 'error'); console.error(e);
+            }
+        }
+
+        function savePdfChanges() {
+            renderFileList();
+            closePdfEditor();
+            showCustomNotification('✅ Changes to PDF saved locally.', 'success');
+        }
+
+        function showCustomNotification(message, type = 'info', duration = 3000) {
+            const notificationArea = document.getElementById('notificationArea');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            notificationArea.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 10); 
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300); 
+            }, duration);
+        }
+
+        function showConfirmation(title, message, callback) {
+            confirmationTitle.textContent = title;
+            confirmationMessage.innerHTML = message; 
+            confirmCallback = callback;
+            confirmationModal.classList.add('active');
+        }
+
+        function hideConfirmation() {
+            confirmationModal.classList.remove('active');
+            confirmCallback = null;
+        }
+
+    </script>
+</body>
+</html>
