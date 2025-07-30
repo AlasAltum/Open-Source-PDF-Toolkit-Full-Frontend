@@ -15,6 +15,7 @@ const rotateRightBtn = document.getElementById('rotateRightBtn');
 const compressBtn = document.getElementById('compressBtn');
 const cropBtn = document.getElementById('cropBtn');
 const removeCommentsBtn = document.getElementById('removeCommentsBtn');
+const removeMetadataBtn = document.getElementById('removeMetadataBtn');
 const deletePageBtn = document.getElementById('deletePageBtn');
 const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
@@ -47,6 +48,7 @@ let currentPdfDocInstance = null; // pdf.js document instance
 let currentPageNum = 1;
 let totalPagesInCurrentDoc = 1;
 let pdfRenderTask = null; // pdf.js render task
+let isMetadataRemoved = false; // Track if metadata has been removed
 
 // Setup PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -68,6 +70,7 @@ rotateRightBtn.addEventListener('click', () => rotateCurrentPdfPage(90));
 compressBtn.addEventListener('click', compressCurrentPdf);
 cropBtn.addEventListener('click', showCropControls);
 removeCommentsBtn.addEventListener('click', removeCommentsFromCurrentPdf);
+removeMetadataBtn.addEventListener('click', removeMetadataFromCurrentPdf);
 deletePageBtn.addEventListener('click', () => {
      if (totalPagesInCurrentDoc <= 1) {
         showCustomNotification('Cannot delete the only page.', 'error');
@@ -261,6 +264,13 @@ async function processFiles() {
 async function openPdfEditor(index) {
     currentEditingFileIndex = index;
     const fileData = selectedFiles[index];
+    
+    // Reset metadata removal state when opening a new document
+    isMetadataRemoved = false;
+    compressBtn.disabled = false;
+    compressBtn.title = 'Compress PDF';
+    compressBtn.style.opacity = '';
+    compressBtn.style.cursor = '';
 
     try {
         const arrayBuffer = (fileData instanceof File) ? await fileData.arrayBuffer() : fileData.arrayBuffer || await fileData.blob.arrayBuffer();
@@ -381,14 +391,20 @@ async function rotateCurrentPdfPage(degrees) {
 }
 
 async function compressCurrentPdf() {
-     if (currentEditingFileIndex === -1) return;
+    if (currentEditingFileIndex === -1) return;
+    
+    if (isMetadataRemoved) {
+        showCustomNotification('❌ Cannot compress PDF after metadata has been removed.', 'error');
+        return;
+    }
+    
     try {
         const pdfDoc = await getEditablePdfDoc();
         await updateSelectedFile(pdfDoc);
         showCustomNotification('✅ PDF re-processed (basic optimization).', 'success');
-    } catch (e)
-{
-        showCustomNotification('❌ Error compressing PDF.', 'error'); console.error(e);
+    } catch (e) {
+        showCustomNotification('❌ Error compressing PDF.', 'error');
+        console.error(e);
     }
 }
 
@@ -448,18 +464,58 @@ async function removeCommentsFromCurrentPdf() {
     }
 }
 
+async function removeMetadataFromCurrentPdf() {
+    try {
+        const pdfDoc = await getEditablePdfDoc();
+        
+        // Remove all document metadata
+        pdfDoc.setTitle('');
+        pdfDoc.setAuthor('');
+        pdfDoc.setSubject('');
+        pdfDoc.setKeywords([]);
+        pdfDoc.setProducer('');
+        pdfDoc.setCreator('');
+        
+        // Remove custom properties
+        const info = pdfDoc.getInfoDict();
+        info.delete('CreationDate');
+        info.delete('ModDate');
+        info.delete('Trapped');
+        
+        // Update the file with cleaned metadata
+        await updateSelectedFile(pdfDoc);
+        
+        // Disable compression after metadata removal
+        isMetadataRemoved = true;
+        compressBtn.disabled = true;
+        compressBtn.title = 'Compression disabled after metadata removal';
+        compressBtn.style.opacity = '0.5';
+        compressBtn.style.cursor = 'not-allowed';
+
+        showCustomNotification('Metadata removed successfully. Compression has been disabled for this document since you cannot do both.', 'success');
+    } catch (error) {
+        console.error('Error removing metadata:', error);
+        showCustomNotification('Failed to remove metadata', 'error');
+    }
+}
+
 async function deleteCurrentPdfPage() {
-    if (currentEditingFileIndex === -1 || !currentPdfDocInstance || totalPagesInCurrentDoc <= 0) return;
     try {
         const pdfDoc = await getEditablePdfDoc();
         pdfDoc.removePage(currentPageNum - 1);
-        await updateSelectedFile(pdfDoc);
-        showCustomNotification(`✅ Page deleted.`, 'success');
-         if (totalPagesInCurrentDoc === 0) {
-            closePdfEditor();
+        
+        // If we removed the last page, update current page number
+        if (currentPageNum > pdfDoc.getPageCount()) {
+            currentPageNum = pdfDoc.getPageCount();
         }
-    } catch (e) {
-        showCustomNotification('❌ Error deleting page.', 'error'); console.error(e);
+        
+        totalPagesInCurrentDoc = pdfDoc.getPageCount();
+        await updateSelectedFile(pdfDoc);
+        await renderCurrentPageInEditor();
+        updateEditorPageInfo();
+    } catch (error) {
+        console.error('Error deleting page:', error);
+        showCustomNotification('Failed to delete page', 'error');
     }
 }
 
