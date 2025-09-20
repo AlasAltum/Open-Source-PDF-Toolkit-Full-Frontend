@@ -1,5 +1,5 @@
-# PDF_toolkit_open_source_free_private
-Full open source and private PDF Toolkit webapp. All logic lives in the frontend, so your data is not uploaded to the internet. It runs in your brower!
+# Open Source PDF Toolkit
+Full open source and private PDF Toolkit webapp. All logic lives in the frontend, so your data is not uploaded to the internet. It runs 100% in your brower!
 Merge, crop, rotate and compress PDFs for free!
 
 # URL:
