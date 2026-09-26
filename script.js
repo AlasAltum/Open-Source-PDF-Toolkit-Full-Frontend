@@ -573,6 +573,9 @@ document.querySelectorAll('.main-tab').forEach(tab => {
     const wordFileName = document.getElementById('wordFileName');
     const wordConvertBtn = document.getElementById('wordConvertBtn');
     const wordLoadingIndicator = document.getElementById('wordLoadingIndicator');
+    const wordPreview = document.getElementById('wordPreview');
+    const wordPreviewContent = document.getElementById('wordPreviewContent');
+    const wordPreviewCount = document.getElementById('wordPreviewCount');
     let wordFile = null;
 
     wordBrowseBtn.addEventListener('click', e => { e.stopPropagation(); wordFileInput.click(); });
@@ -591,7 +594,7 @@ document.querySelectorAll('.main-tab').forEach(tab => {
         if (wordFileInput.files[0]) setWordFile(wordFileInput.files[0]);
     });
 
-    function setWordFile(file) {
+    async function setWordFile(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (!['doc', 'docx'].includes(ext)) {
             showCustomNotification('Please select a .doc or .docx file.', 'error');
@@ -601,6 +604,28 @@ document.querySelectorAll('.main-tab').forEach(tab => {
         wordFileName.textContent = file.name;
         wordFileInfo.style.display = 'flex';
         wordDropZone.style.display = 'none';
+        // Show preview
+        wordPreviewContent.innerHTML = '';
+        wordPreview.style.display = 'none';
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const lines = await extractTextFromDocx(arrayBuffer);
+            const nonEmpty = lines.filter(l => l.text.trim());
+            wordPreviewCount.textContent = `${nonEmpty.length} paragraph${nonEmpty.length !== 1 ? 's' : ''}`;
+            nonEmpty.forEach(line => {
+                const el = document.createElement(line.isHeading ? 'strong' : 'p');
+                el.className = line.isHeading ? 'office-preview-heading' : 'office-preview-para';
+                el.textContent = line.text;
+                wordPreviewContent.appendChild(el);
+            });
+            if (nonEmpty.length === 0) {
+                wordPreviewContent.innerHTML = '<p class="office-preview-empty">No text content found.</p>';
+            }
+            wordPreview.style.display = '';
+        } catch (e) {
+            wordPreviewContent.innerHTML = '<p class="office-preview-empty">Could not generate preview.</p>';
+            wordPreview.style.display = '';
+        }
     }
 
     wordConvertBtn.addEventListener('click', async () => {
@@ -625,6 +650,9 @@ document.querySelectorAll('.main-tab').forEach(tab => {
     const pptxFileName = document.getElementById('pptxFileName');
     const pptxConvertBtn = document.getElementById('pptxConvertBtn');
     const pptxLoadingIndicator = document.getElementById('pptxLoadingIndicator');
+    const pptxPreview = document.getElementById('pptxPreview');
+    const pptxPreviewContent = document.getElementById('pptxPreviewContent');
+    const pptxPreviewCount = document.getElementById('pptxPreviewCount');
     let pptxFile = null;
 
     pptxBrowseBtn.addEventListener('click', e => { e.stopPropagation(); pptxFileInput.click(); });
@@ -643,7 +671,7 @@ document.querySelectorAll('.main-tab').forEach(tab => {
         if (pptxFileInput.files[0]) setPptxFile(pptxFileInput.files[0]);
     });
 
-    function setPptxFile(file) {
+    async function setPptxFile(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (!['ppt', 'pptx'].includes(ext)) {
             showCustomNotification('Please select a .ppt or .pptx file.', 'error');
@@ -653,6 +681,36 @@ document.querySelectorAll('.main-tab').forEach(tab => {
         pptxFileName.textContent = file.name;
         pptxFileInfo.style.display = 'flex';
         pptxDropZone.style.display = 'none';
+        // Show preview
+        pptxPreviewContent.innerHTML = '';
+        pptxPreview.style.display = 'none';
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const slides = await extractTextFromPptx(arrayBuffer);
+            pptxPreviewCount.textContent = `${slides.length} slide${slides.length !== 1 ? 's' : ''}`;
+            slides.forEach(slide => {
+                const slideEl = document.createElement('div');
+                slideEl.className = 'office-preview-slide';
+                const badge = document.createElement('span');
+                badge.className = 'office-preview-slide-badge';
+                badge.textContent = `Slide ${slide.index}`;
+                slideEl.appendChild(badge);
+                slide.lines.forEach(line => {
+                    const el = document.createElement(line.isTitle ? 'strong' : 'p');
+                    el.className = line.isTitle ? 'office-preview-heading' : 'office-preview-para';
+                    el.textContent = line.text;
+                    slideEl.appendChild(el);
+                });
+                pptxPreviewContent.appendChild(slideEl);
+            });
+            if (slides.length === 0) {
+                pptxPreviewContent.innerHTML = '<p class="office-preview-empty">No slides found.</p>';
+            }
+            pptxPreview.style.display = '';
+        } catch (e) {
+            pptxPreviewContent.innerHTML = '<p class="office-preview-empty">Could not generate preview.</p>';
+            pptxPreview.style.display = '';
+        }
     }
 
     pptxConvertBtn.addEventListener('click', async () => {
