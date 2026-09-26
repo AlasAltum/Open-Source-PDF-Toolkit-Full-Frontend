@@ -407,7 +407,165 @@ body {
     }
 }
 
-/* PDF Editor & Confirmation Modal Styles */
+/* Main Tab Navigation */
+.main-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    padding: 6px;
+}
+
+.main-tab {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.main-tab.active {
+    background: white;
+    color: #4f46e5;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.main-tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Office Section */
+.office-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 25px;
+}
+
+.office-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.office-card-icon {
+    font-size: 3em;
+    text-align: center;
+}
+
+.office-card h3 {
+    text-align: center;
+    color: #374151;
+    font-size: 1.3em;
+}
+
+.office-card > p {
+    text-align: center;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.office-drop-zone {
+    border: 3px dashed #667eea;
+    border-radius: 15px;
+    padding: 30px 20px;
+    text-align: center;
+    background: linear-gradient(45deg, #f8faff, #f1f5ff);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.office-drop-zone.drag-over {
+    border-color: #4f46e5;
+    background: linear-gradient(45deg, #eef2ff, #e0e7ff);
+    transform: scale(1.02);
+}
+
+.office-drop-zone .upload-icon {
+    font-size: 2.5em;
+    margin-bottom: 0;
+}
+
+.office-drop-zone p {
+    color: #6b7280;
+    font-size: 0.95em;
+}
+
+.office-file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 12px 15px;
+    border-left: 4px solid #667eea;
+}
+
+.office-file-name {
+    flex: 1;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.office-convert-btn {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.office-convert-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);
+}
+
+.office-note {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 15px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.office-note span {
+    font-size: 1.4em;
+    flex-shrink: 0;
+}
+
+.office-note p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
 .modal {
     position: fixed;
     top: 0;
