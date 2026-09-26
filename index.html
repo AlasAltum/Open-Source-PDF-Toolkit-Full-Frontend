@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -21,6 +22,12 @@
             </div>
         </div>
 
+        <div class="main-tabs">
+            <button class="main-tab active" id="tabPdf" data-tab="pdf">📄 PDF Tools</button>
+            <button class="main-tab" id="tabOffice" data-tab="office">🗂️ Office</button>
+        </div>
+
+        <div id="sectionPdf">
         <div class="upload-section">
             <div class="drop-zone" id="dropZone">
                 <div class="drop-zone-content">
@@ -47,6 +54,56 @@
                 </div>
             </div>
         </div>
+
+        </div><!-- end #sectionPdf -->
+
+        <div id="sectionOffice" style="display:none;">
+            <div class="office-section">
+                <div class="office-card">
+                    <div class="office-card-icon">📝</div>
+                    <h3>Word to PDF</h3>
+                    <p>Convert your <strong>.doc</strong> or <strong>.docx</strong> files to PDF directly in your browser.</p>
+                    <div class="office-drop-zone" id="wordDropZone">
+                        <span class="upload-icon">📄</span>
+                        <p>Drop Word file here or click to browse</p>
+                        <button class="upload-btn" id="wordBrowseBtn">Choose Word File</button>
+                    </div>
+                    <input type="file" id="wordFileInput" class="file-input" accept=".doc,.docx">
+                    <div class="office-file-info" id="wordFileInfo" style="display:none;">
+                        <span class="office-file-name" id="wordFileName"></span>
+                        <button class="office-convert-btn" id="wordConvertBtn">🚀 Convert to PDF</button>
+                    </div>
+                    <div class="loading" id="wordLoadingIndicator">
+                        <div class="spinner"></div>
+                        <span>Converting Word to PDF…</span>
+                    </div>
+                </div>
+
+                <div class="office-card">
+                    <div class="office-card-icon">📊</div>
+                    <h3>PowerPoint to PDF</h3>
+                    <p>Convert your <strong>.ppt</strong> or <strong>.pptx</strong> files to PDF directly in your browser.</p>
+                    <div class="office-drop-zone" id="pptxDropZone">
+                        <span class="upload-icon">📊</span>
+                        <p>Drop PowerPoint file here or click to browse</p>
+                        <button class="upload-btn" id="pptxBrowseBtn">Choose PowerPoint File</button>
+                    </div>
+                    <input type="file" id="pptxFileInput" class="file-input" accept=".ppt,.pptx">
+                    <div class="office-file-info" id="pptxFileInfo" style="display:none;">
+                        <span class="office-file-name" id="pptxFileName"></span>
+                        <button class="office-convert-btn" id="pptxConvertBtn">🚀 Convert to PDF</button>
+                    </div>
+                    <div class="loading" id="pptxLoadingIndicator">
+                        <div class="spinner"></div>
+                        <span>Converting PowerPoint to PDF…</span>
+                    </div>
+                </div>
+            </div>
+            <div class="office-note">
+                <span>⚠️</span>
+                <p>Office-to-PDF conversion is performed entirely in your browser. Complex formatting may not be fully preserved. No files are uploaded to any server.</p>
+            </div>
+        </div><!-- end #sectionOffice -->
 
         <div class="features">
             <div class="feature">

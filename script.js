@@ -552,3 +552,376 @@ function hideConfirmation() {
     confirmationModal.classList.remove('active');
     confirmCallback = null;
 }
+
+// ─── Main Tab Switching ───────────────────────────────────────────────────────
+document.querySelectorAll('.main-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.tab;
+        document.getElementById('sectionPdf').style.display = target === 'pdf' ? '' : 'none';
+        document.getElementById('sectionOffice').style.display = target === 'office' ? '' : 'none';
+    });
+});
+
+// ─── Office: Word to PDF ──────────────────────────────────────────────────────
+(function () {
+    const wordDropZone = document.getElementById('wordDropZone');
+    const wordFileInput = document.getElementById('wordFileInput');
+    const wordBrowseBtn = document.getElementById('wordBrowseBtn');
+    const wordFileInfo = document.getElementById('wordFileInfo');
+    const wordFileName = document.getElementById('wordFileName');
+    const wordConvertBtn = document.getElementById('wordConvertBtn');
+    const wordLoadingIndicator = document.getElementById('wordLoadingIndicator');
+    let wordFile = null;
+
+    wordBrowseBtn.addEventListener('click', e => { e.stopPropagation(); wordFileInput.click(); });
+    wordDropZone.addEventListener('click', () => wordFileInput.click());
+
+    wordDropZone.addEventListener('dragover', e => { e.preventDefault(); wordDropZone.classList.add('drag-over'); });
+    wordDropZone.addEventListener('dragleave', () => wordDropZone.classList.remove('drag-over'));
+    wordDropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        wordDropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) setWordFile(file);
+    });
+
+    wordFileInput.addEventListener('change', () => {
+        if (wordFileInput.files[0]) setWordFile(wordFileInput.files[0]);
+    });
+
+    function setWordFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['doc', 'docx'].includes(ext)) {
+            showCustomNotification('Please select a .doc or .docx file.', 'error');
+            return;
+        }
+        wordFile = file;
+        wordFileName.textContent = file.name;
+        wordFileInfo.style.display = 'flex';
+        wordDropZone.style.display = 'none';
+    }
+
+    wordConvertBtn.addEventListener('click', async () => {
+        if (!wordFile) return;
+        wordLoadingIndicator.style.display = 'flex';
+        wordConvertBtn.disabled = true;
+        try {
+            await convertOfficeToPdf(wordFile, 'word');
+        } finally {
+            wordLoadingIndicator.style.display = 'none';
+            wordConvertBtn.disabled = false;
+        }
+    });
+})();
+
+// ─── Office: PPTX to PDF ──────────────────────────────────────────────────────
+(function () {
+    const pptxDropZone = document.getElementById('pptxDropZone');
+    const pptxFileInput = document.getElementById('pptxFileInput');
+    const pptxBrowseBtn = document.getElementById('pptxBrowseBtn');
+    const pptxFileInfo = document.getElementById('pptxFileInfo');
+    const pptxFileName = document.getElementById('pptxFileName');
+    const pptxConvertBtn = document.getElementById('pptxConvertBtn');
+    const pptxLoadingIndicator = document.getElementById('pptxLoadingIndicator');
+    let pptxFile = null;
+
+    pptxBrowseBtn.addEventListener('click', e => { e.stopPropagation(); pptxFileInput.click(); });
+    pptxDropZone.addEventListener('click', () => pptxFileInput.click());
+
+    pptxDropZone.addEventListener('dragover', e => { e.preventDefault(); pptxDropZone.classList.add('drag-over'); });
+    pptxDropZone.addEventListener('dragleave', () => pptxDropZone.classList.remove('drag-over'));
+    pptxDropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        pptxDropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) setPptxFile(file);
+    });
+
+    pptxFileInput.addEventListener('change', () => {
+        if (pptxFileInput.files[0]) setPptxFile(pptxFileInput.files[0]);
+    });
+
+    function setPptxFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['ppt', 'pptx'].includes(ext)) {
+            showCustomNotification('Please select a .ppt or .pptx file.', 'error');
+            return;
+        }
+        pptxFile = file;
+        pptxFileName.textContent = file.name;
+        pptxFileInfo.style.display = 'flex';
+        pptxDropZone.style.display = 'none';
+    }
+
+    pptxConvertBtn.addEventListener('click', async () => {
+        if (!pptxFile) return;
+        pptxLoadingIndicator.style.display = 'flex';
+        pptxConvertBtn.disabled = true;
+        try {
+            await convertOfficeToPdf(pptxFile, 'pptx');
+        } finally {
+            pptxLoadingIndicator.style.display = 'none';
+            pptxConvertBtn.disabled = false;
+        }
+    });
+})();
+
+// ─── Office Conversion Engine ─────────────────────────────────────────────────
+async function convertOfficeToPdf(file, type) {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+        const pdfDoc = await PDFDocument.create();
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+        if (type === 'word') {
+            await renderWordToPdf(arrayBuffer, pdfDoc, font, boldFont);
+        } else {
+            await renderPptxToPdf(arrayBuffer, pdfDoc, font, boldFont);
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name.replace(/\.[^.]+$/, '') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+        showCustomNotification('✅ Converted and downloaded successfully!', 'success');
+    } catch (err) {
+        console.error('Office conversion error:', err);
+        showCustomNotification('Conversion failed. The file may be corrupted or unsupported.', 'error');
+    }
+}
+
+async function renderWordToPdf(arrayBuffer, pdfDoc, font, boldFont) {
+    // Parse docx (ZIP-based) XML to extract text
+    const textLines = await extractTextFromDocx(arrayBuffer);
+    renderTextPagesToPdf(textLines, pdfDoc, font, boldFont);
+}
+
+async function renderPptxToPdf(arrayBuffer, pdfDoc, font, boldFont) {
+    const slides = await extractTextFromPptx(arrayBuffer);
+    for (const slide of slides) {
+        const page = pdfDoc.addPage([792, 612]); // landscape (16:9-ish)
+        const { width, height } = page.getSize();
+        page.drawRectangle({ x: 0, y: 0, width, height, color: PDFLib.rgb(0.98, 0.98, 1) });
+        // Slide number badge
+        page.drawText(`Slide ${slide.index}`, {
+            x: 20, y: height - 25, size: 9, font, color: PDFLib.rgb(0.6, 0.6, 0.6)
+        });
+        let y = height - 60;
+        for (const line of slide.lines) {
+            if (y < 40) break;
+            const isTitle = line.isTitle;
+            const size = isTitle ? 22 : 13;
+            const f = isTitle ? boldFont : font;
+            const color = isTitle ? PDFLib.rgb(0.18, 0.18, 0.55) : PDFLib.rgb(0.15, 0.15, 0.15);
+            const wrapped = wrapText(line.text, width - 80, size, f);
+            for (const wline of wrapped) {
+                if (y < 40) break;
+                page.drawText(wline, { x: 40, y, size, font: f, color });
+                y -= size * 1.5;
+            }
+            if (isTitle) y -= 8;
+        }
+    }
+}
+
+// Extract text lines from a docx file (ZIP + XML)
+async function extractTextFromDocx(arrayBuffer) {
+    const zip = await loadZip(arrayBuffer);
+    if (!zip) return [{ text: '(Could not parse document — ZIP/XML structure unreadable)', isHeading: false }];
+    const xmlStr = await readZipEntry(zip, 'word/document.xml');
+    if (!xmlStr) return [{ text: '(word/document.xml not found in this file)', isHeading: false }];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlStr, 'application/xml');
+    const lines = [];
+    const paras = doc.querySelectorAll('p');
+    paras.forEach(para => {
+        const styleEl = para.querySelector('pStyle');
+        const styleName = styleEl ? styleEl.getAttribute('w:val') || '' : '';
+        const isHeading = /^[Hh]eading/.test(styleName) || /^Title/.test(styleName);
+        const texts = para.querySelectorAll('t');
+        let text = '';
+        texts.forEach(t => { text += t.textContent; });
+        lines.push({ text: text || '', isHeading });
+    });
+    return lines;
+}
+
+// Extract slides from a pptx file (ZIP + XML)
+async function extractTextFromPptx(arrayBuffer) {
+    const zip = await loadZip(arrayBuffer);
+    const slides = [];
+    if (!zip) return slides;
+    // Find slide entries: ppt/slides/slide1.xml, slide2.xml, …
+    const slideEntries = Object.keys(zip.files)
+        .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+        .sort((a, b) => {
+            const na = parseInt(a.match(/\d+/)[0]);
+            const nb = parseInt(b.match(/\d+/)[0]);
+            return na - nb;
+        });
+    for (let i = 0; i < slideEntries.length; i++) {
+        const xmlStr = await readZipEntry(zip, slideEntries[i]);
+        if (!xmlStr) continue;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'application/xml');
+        const lines = [];
+        // title placeholders (ph type="title" or "ctrTitle")
+        const titleEls = doc.querySelectorAll('[type="title"],[type="ctrTitle"]');
+        titleEls.forEach(el => {
+            const t = Array.from(el.querySelectorAll('t')).map(n => n.textContent).join('');
+            if (t.trim()) lines.push({ text: t, isTitle: true });
+        });
+        // all other text nodes
+        doc.querySelectorAll('sp').forEach(sp => {
+            const ph = sp.querySelector('ph');
+            if (ph) {
+                const type = ph.getAttribute('type') || '';
+                if (type === 'title' || type === 'ctrTitle') return;
+            }
+            const t = Array.from(sp.querySelectorAll('t')).map(n => n.textContent).join('');
+            if (t.trim()) lines.push({ text: t, isTitle: false });
+        });
+        slides.push({ index: i + 1, lines });
+    }
+    return slides;
+}
+
+function renderTextPagesToPdf(lines, pdfDoc, font, boldFont) {
+    const pageWidth = 595, pageHeight = 842, margin = 50, fontSize = 11, lineHeight = 16;
+    const maxY = pageHeight - margin;
+    let page = pdfDoc.addPage([pageWidth, pageHeight]);
+    let y = maxY;
+
+    for (const line of lines) {
+        const f = line.isHeading ? boldFont : font;
+        const size = line.isHeading ? 14 : fontSize;
+        const color = line.isHeading ? PDFLib.rgb(0.18, 0.18, 0.55) : PDFLib.rgb(0.1, 0.1, 0.1);
+        const wrapped = wrapText(line.text || ' ', pageWidth - margin * 2, size, f);
+        for (const wline of wrapped) {
+            if (y < margin + size) {
+                page = pdfDoc.addPage([pageWidth, pageHeight]);
+                y = maxY;
+            }
+            page.drawText(wline, { x: margin, y, size, font: f, color });
+            y -= lineHeight;
+        }
+        if (line.isHeading) y -= 6;
+    }
+}
+
+function wrapText(text, maxWidth, fontSize, font) {
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+        const test = current ? current + ' ' + word : word;
+        let width;
+        try { width = font.widthOfTextAtSize(test, fontSize); } catch (e) { width = test.length * fontSize * 0.5; }
+        if (width > maxWidth && current) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = test;
+        }
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : [' '];
+}
+
+// Minimal ZIP reader using JSZip if available, otherwise falls back to raw parsing
+async function loadZip(arrayBuffer) {
+    // Try to use JSZip if loaded
+    if (typeof JSZip !== 'undefined') {
+        return await JSZip.loadAsync(arrayBuffer);
+    }
+    // Fallback: use browser's DecompressionStream (available in modern browsers)
+    try {
+        return await loadZipNative(arrayBuffer);
+    } catch (e) {
+        return null;
+    }
+}
+
+async function readZipEntry(zip, path) {
+    if (typeof JSZip !== 'undefined') {
+        const entry = zip.file(path);
+        if (!entry) return null;
+        return await entry.async('string');
+    }
+    // Native fallback
+    return zip.files[path] || null;
+}
+
+// Native ZIP parser (no dependency) — reads stored or deflate entries
+async function loadZipNative(arrayBuffer) {
+    const view = new DataView(arrayBuffer);
+    const bytes = new Uint8Array(arrayBuffer);
+    const files = {};
+
+    // Find End of Central Directory record
+    let eocdOffset = -1;
+    for (let i = bytes.length - 22; i >= 0; i--) {
+        if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+    }
+    if (eocdOffset < 0) return null;
+
+    const cdOffset = view.getUint32(eocdOffset + 16, true);
+    const cdSize = view.getUint32(eocdOffset + 12, true);
+
+    let pos = cdOffset;
+    while (pos < cdOffset + cdSize) {
+        if (view.getUint32(pos, true) !== 0x02014b50) break;
+        const compressionMethod = view.getUint16(pos + 10, true);
+        const compressedSize = view.getUint32(pos + 20, true);
+        const uncompressedSize = view.getUint32(pos + 24, true);
+        const fileNameLen = view.getUint16(pos + 28, true);
+        const extraLen = view.getUint16(pos + 30, true);
+        const commentLen = view.getUint16(pos + 32, true);
+        const localHeaderOffset = view.getUint32(pos + 42, true);
+        const fileName = new TextDecoder().decode(bytes.slice(pos + 46, pos + 46 + fileNameLen));
+        pos += 46 + fileNameLen + extraLen + commentLen;
+
+        // Read local file header — use local header's own file name length
+        const lhFileNameLen = view.getUint16(localHeaderOffset + 26, true);
+        const lhExtraLen = view.getUint16(localHeaderOffset + 28, true);
+        const dataOffset = localHeaderOffset + 30 + lhFileNameLen + lhExtraLen;
+        const compressedData = bytes.slice(dataOffset, dataOffset + compressedSize);
+
+        let content;
+        if (compressionMethod === 0) {
+            content = new TextDecoder().decode(compressedData);
+        } else if (compressionMethod === 8) {
+            try {
+                const ds = new DecompressionStream('deflate-raw');
+                const writer = ds.writable.getWriter();
+                writer.write(compressedData);
+                writer.close();
+                const chunks = [];
+                const reader = ds.readable.getReader();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                }
+                const total = chunks.reduce((s, c) => s + c.length, 0);
+                const out = new Uint8Array(total);
+                let offset = 0;
+                chunks.forEach(c => { out.set(c, offset); offset += c.length; });
+                content = new TextDecoder().decode(out);
+            } catch (e) {
+                content = null;
+            }
+        }
+        if (content !== null && content !== undefined) files[fileName] = content;
+    }
+    return { files, file: (p) => files[p] ? { async: async () => files[p] } : null };
+}
